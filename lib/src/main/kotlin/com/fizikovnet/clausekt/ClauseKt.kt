@@ -1,6 +1,6 @@
 package com.fizikovnet.clausekt
 
-    class ClauseKt {
+class ClauseKt {
     fun makeClause(obj: Any): String {
         val conditions = mutableListOf<String>()
         for (field in obj::class.java.declaredFields) {
