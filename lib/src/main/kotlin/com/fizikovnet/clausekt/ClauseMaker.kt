@@ -1,6 +1,6 @@
 package com.fizikovnet.clausekt
 
-class ClauseKt {
+class ClauseMaker {
     fun makeClause(obj: Any, operator: SQLOperator? = null): String {
         val conditions = mutableListOf<String>()
         val op = operator?.op ?: SQLOperator.EQUAL.op

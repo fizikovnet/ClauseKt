@@ -6,7 +6,7 @@ import kotlin.test.assertEquals
 class ClauseKtTest {
     @Test
     fun successCreateClause_defaultOperatorTest() {
-        val creator = ClauseKt()
+        val creator = ClauseMaker()
         val filter = SimpleFilter("value_1", "value_2")
         assertEquals(
             "field1 = 'value_1' and field2 = 'value_2'",
@@ -16,7 +16,7 @@ class ClauseKtTest {
 
     @Test
     fun successCreateClause_likeOperatorTest() {
-        val creator = ClauseKt()
+        val creator = ClauseMaker()
         val filter = SimpleFilter("value_1", "value_2")
         assertEquals(
             "field1 like 'value_1' and field2 like 'value_2'",
@@ -26,7 +26,7 @@ class ClauseKtTest {
 
     @Test
     fun successCreateEmptyClauseTest() {
-        val creator = ClauseKt()
+        val creator = ClauseMaker()
         val filter = SimpleFilter(null, null)
         assertEquals(
             "",
