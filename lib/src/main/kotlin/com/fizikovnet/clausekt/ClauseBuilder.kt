@@ -1,6 +1,6 @@
 package com.fizikovnet.clausekt
 
-import com.fizikovnet.clausekt.SQLOperator.*
+import com.fizikovnet.clausekt.ComparisonType.*
 
 class ClauseBuilder(private val container: MutableList<Piece> = mutableListOf()) {
 
@@ -10,7 +10,7 @@ class ClauseBuilder(private val container: MutableList<Piece> = mutableListOf())
         Piece(field = value)
     )}
 
-    fun op(operator: SQLOperator) = apply {
+    fun op(operator: ComparisonType) = apply {
         this.container[index].operator = operator
     }
 
@@ -29,4 +29,4 @@ class ClauseBuilder(private val container: MutableList<Piece> = mutableListOf())
     }
 }
 
-data class Piece(val field: String, var value: String? = null, var operator: SQLOperator = EQUAL)
+data class Piece(val field: String, var value: String? = null, var operator: ComparisonType = EQUAL)

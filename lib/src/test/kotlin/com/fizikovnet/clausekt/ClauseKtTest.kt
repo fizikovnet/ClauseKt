@@ -20,7 +20,7 @@ class ClauseKtTest {
         val filter = SimpleFilter("value_1", "value_2")
         assertEquals(
             "field1 like 'value_1' and field2 like 'value_2'",
-            creator.makeClause(filter, SQLOperator.LIKE)
+            creator.makeClause(filter, ComparisonType.LIKE)
         )
     }
 

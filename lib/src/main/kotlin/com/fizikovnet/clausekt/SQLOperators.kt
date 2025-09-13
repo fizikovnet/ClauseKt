@@ -1,6 +1,6 @@
 package com.fizikovnet.clausekt
 
-enum class SQLOperator(val op: String) {
+enum class ComparisonType(val op: String) {
     LESS("<"),
     GREATER(">"),
     LESS_OR_EQUAL("<="),
@@ -9,4 +9,10 @@ enum class SQLOperator(val op: String) {
     NOT_EQUAL("<>"),
     LIKE("like"),
     ILIKE("ilike")
+}
+
+enum class LogicalType(val op: String) {
+    AND(" and "),
+    OR(" or "),
+    NOT(" not ")
 }

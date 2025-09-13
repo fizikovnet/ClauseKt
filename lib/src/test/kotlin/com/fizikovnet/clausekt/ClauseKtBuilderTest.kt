@@ -1,6 +1,6 @@
 package com.fizikovnet.clausekt
 
-import com.fizikovnet.clausekt.SQLOperator.*
+import com.fizikovnet.clausekt.ComparisonType.*
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
