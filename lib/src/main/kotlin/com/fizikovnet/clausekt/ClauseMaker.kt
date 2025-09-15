@@ -1,5 +1,8 @@
 package com.fizikovnet.clausekt
 
+/**
+ * ToDo what if not all fields in incoming object have value? e.g.: field1 = "test", field2 = null, field3 = "temp"
+ */
 class ClauseMaker {
     fun makeClause(obj: Any,
                    operator: ComparisonType = ComparisonType.EQUAL,
@@ -14,18 +17,19 @@ class ClauseMaker {
         return conditions.joinToString(logicalType.op)
     }
 
-    /**
-     * ToDo throw exception if compOps.size != fields.size, and logicOps.size != fields.size-1
-     */
-    fun makeClause(obj: Any, compOps: List<ComparisonType>, logicOps: List<LogicalType>): String {
+    fun makeClause(obj: Any, compareOperations: List<ComparisonType>, logicalBindOperations: List<LogicalType>): String {
         val conditions = mutableListOf<String>()
-        obj::class.java.declaredFields.forEachIndexed { index, field ->
+        val fields = obj::class.java.declaredFields
+        if (compareOperations.size != fields.size)
+            throw ClauseMakerException("compareOperations size isn't equal of number of fields")
+        if (logicalBindOperations.size != (fields.size-1))
+            throw ClauseMakerException("logicalBindOperations should be 1 less then number of fields")
+        fields.forEachIndexed { index, field ->
             field.isAccessible = true
             field.get(obj)?.let {
-                conditions.add("${field.name} ${compOps[index].op} '${field.get(obj)}'")
-                if (logicOps.getOrNull(index) != null) {
-                    conditions.add(logicOps[index].op)
-                }
+                conditions.add("${field.name} ${compareOperations[index].op} '${field.get(obj)}'")
+                if (index <= logicalBindOperations.lastIndex)
+                    conditions.add(logicalBindOperations[index].op)
             }
         }
         return conditions.joinToString("")

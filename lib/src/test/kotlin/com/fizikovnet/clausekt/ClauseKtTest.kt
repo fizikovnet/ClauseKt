@@ -2,6 +2,7 @@ package com.fizikovnet.clausekt
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 
 class ClauseKtTest {
     @Test
@@ -54,6 +55,34 @@ class ClauseKtTest {
                 listOf(ComparisonType.EQUAL, ComparisonType.NOT_EQUAL, ComparisonType.LIKE),
                 listOf(LogicalType.AND, LogicalType.OR))
         )
+    }
+
+    @Test
+    fun throwExceptionWhenListCompareOpsNotEqualFieldSizeTest() {
+        val creator = ClauseMaker()
+        val filter = SimpleFilter("value_1", "value_2", "value_3")
+        val exception = assertFailsWith<ClauseMakerException>(
+            block = {
+                creator.makeClause(filter,
+                    listOf(ComparisonType.EQUAL),
+                    listOf(LogicalType.AND, LogicalType.OR))
+            }
+        )
+        assertEquals(exception.message, "compareOperations size isn't equal of number of fields")
+    }
+
+    @Test
+    fun throwExceptionWithIncorrectLogicalListSizeTest() {
+        val creator = ClauseMaker()
+        val filter = SimpleFilter("value_1", "value_2", "value_3")
+        val exception = assertFailsWith<ClauseMakerException>(
+            block = {
+                 creator.makeClause(filter,
+                    listOf(ComparisonType.EQUAL, ComparisonType.NOT_EQUAL, ComparisonType.LIKE),
+                    listOf(LogicalType.AND))
+            }
+        )
+        assertEquals(exception.message, "logicalBindOperations should be 1 less then number of fields")
     }
 
     data class SimpleFilter(val field1: String?, val field2: String?, val field3: String? = null)
