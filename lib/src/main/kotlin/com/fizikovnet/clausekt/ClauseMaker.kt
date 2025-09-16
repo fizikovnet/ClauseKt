@@ -1,8 +1,5 @@
 package com.fizikovnet.clausekt
 
-/**
- * ToDo what if not all fields in incoming object have value? e.g.: field1 = "test", field2 = null, field3 = "temp"
- */
 class ClauseMaker {
     fun makeClause(obj: Any,
                    operator: ComparisonType = ComparisonType.EQUAL,
@@ -20,11 +17,15 @@ class ClauseMaker {
     fun makeClause(obj: Any, compareOperations: List<ComparisonType>, logicalBindOperations: List<LogicalType>): String {
         val conditions = mutableListOf<String>()
         val fields = obj::class.java.declaredFields
-        if (compareOperations.size != fields.size)
+        val nonNullFields = fields.filter {
+            it.isAccessible = true
+            it.get(obj) != null
+        }
+        if (compareOperations.size != nonNullFields.size)
             throw ClauseMakerException("compareOperations size isn't equal of number of fields")
-        if (logicalBindOperations.size != (fields.size-1))
+        if (logicalBindOperations.size != (nonNullFields.size-1))
             throw ClauseMakerException("logicalBindOperations should be 1 less then number of fields")
-        fields.forEachIndexed { index, field ->
+        nonNullFields.forEachIndexed { index, field ->
             field.isAccessible = true
             field.get(obj)?.let {
                 conditions.add("${field.name} ${compareOperations[index].op} '${field.get(obj)}'")

@@ -85,5 +85,17 @@ class ClauseKtTest {
         assertEquals(exception.message, "logicalBindOperations should be 1 less then number of fields")
     }
 
+    @Test
+    fun successCreateClauseWithNotAllFieldsHaveValueTest() {
+        val creator = ClauseMaker()
+        val filter = SimpleFilter("value_1", null, "value_3")
+        assertEquals(
+            "field1 = 'value_1' or field3 like 'value_3'",
+            creator.makeClause(filter,
+                listOf(ComparisonType.EQUAL, ComparisonType.LIKE),
+                listOf(LogicalType.OR))
+        )
+    }
+
     data class SimpleFilter(val field1: String?, val field2: String?, val field3: String? = null)
 }
