@@ -1,5 +1,11 @@
 package com.fizikovnet.clausekt
 
+/**
+ * ToDo
+ * 1. Collections in field: List<String>
+ * 2. Support filter by jsonb data column
+ * 3. Corner case if param has Boolean type
+ */
 class ClauseMaker {
     fun makeClause(obj: Any,
                    operator: ComparisonType = ComparisonType.EQUAL,
@@ -8,7 +14,14 @@ class ClauseMaker {
         for (field in obj::class.java.declaredFields) {
             field.isAccessible = true
             field.get(obj)?.let {
-                conditions.add("${field.name} ${operator.op} '${field.get(obj)}'")
+                conditions.add(buildString {
+                    append("${field.name} ${operator.op} ")
+                    if (basicTypes.contains(field.type.kotlin)) {
+                        append(field.get(obj).toString())
+                    } else {
+                        append("'${field.get(obj)}'")
+                    }
+                })
             }
         }
         return conditions.joinToString(logicalType.op)
@@ -28,11 +41,30 @@ class ClauseMaker {
         nonNullFields.forEachIndexed { index, field ->
             field.isAccessible = true
             field.get(obj)?.let {
-                conditions.add("${field.name} ${compareOperations[index].op} '${field.get(obj)}'")
+                conditions.add(buildString {
+                    append("${field.name} ${compareOperations[index].op} ")
+                    if (basicTypes.contains(field.type.kotlin)) {
+                        append(field.get(obj).toString())
+                    } else {
+                        append("'${field.get(obj)}'")
+                    }
+                })
                 if (index <= logicalBindOperations.lastIndex)
                     conditions.add(logicalBindOperations[index].op)
             }
         }
         return conditions.joinToString("")
+    }
+
+    companion object {
+        private val basicTypes = listOf(
+            Byte::class,
+            Short::class,
+            Int::class,
+            Long::class,
+            Float::class,
+            Double::class,
+            Boolean::class
+        )
     }
 }
