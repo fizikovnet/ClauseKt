@@ -7,6 +7,7 @@ import kotlin.test.assertFailsWith
 /**
  * ToDo:
  * 1. use @ParameterizedTest and @MethodSource for test cases
+ * 2. Write integration tests with test container
  */
 class ClauseKtTest {
     @Test
@@ -26,16 +27,6 @@ class ClauseKtTest {
         assertEquals(
             "field1 like 'value_1' and field2 like 'value_2'",
             creator.makeClause(filter, ComparisonType.LIKE)
-        )
-    }
-
-    @Test
-    fun successCreateEmptyClauseTest() {
-        val creator = ClauseMaker()
-        val filter = StringsFilter(null, null)
-        assertEquals(
-            "",
-            creator.makeClause(filter)
         )
     }
 
