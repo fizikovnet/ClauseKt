@@ -4,12 +4,13 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import com.fizikovnet.clausekt.ComparisonType.*
 import com.fizikovnet.clausekt.LogicalType.*
+import kotlin.test.Ignore
 
 class ClauseKtV2Test {
 
     @Test
     fun successCreateDefaultClauseTest() {
-        val filter = StringsFilter("value_1", "value_2")
+        val filter = FilterString("value_1", "value_2")
         val creator = ClauseMaker(filter)
         assertEquals(
             "field1 = 'value_1' and field2 = 'value_2' and field3 = null",
@@ -19,7 +20,7 @@ class ClauseKtV2Test {
 
     @Test
     fun successCreateClauseWithExcludeFieldsTest() {
-        val filter = StringsFilter(null, null)
+        val filter = FilterString(null, null)
         val creator = ClauseMaker(filter)
         assertEquals(
             "field2 = null",
@@ -29,18 +30,40 @@ class ClauseKtV2Test {
 
     @Test
     fun successCreateClauseWithSpecifyOperatorsTest() {
-        val filter = StringsFilter("value1", null, "value3")
+        val filter = FilterVariousPrimitiveFieldTypes(42, true, 164.07)
         val creator = ClauseMaker(filter)
         assertEquals(
-            "field1 like 'value1' or field2 <> null and field3 = 'value3'",
+            "field1 >= 42 or field2 = true and field3 < 164.07",
             creator
-                .operators(LIKE, NOT_EQUAL, EQUAL)
+                .operators(GREATER_OR_EQUAL, EQUAL, LESS)
                 .binds(OR, AND)
                 .build()
         )
     }
 
-    data class StringsFilter(val field1: String?, val field2: String?, val field3: String? = null)
-    data class FilterVariousFieldTypes(val field1: Int?, val field2: Boolean?, val field3: Double?)
+    @Test
+    fun successCreateClauseObjectHasListFieldTest() {
+        val filter = FilterListFieldTypes(listOf("str_1", "str_2"), listOf(56, 87, 109))
+        val creator = ClauseMaker(filter)
+        assertEquals(
+            "field1 in ('str_1', 'str_2') and field2 in (56, 87, 109)",
+            creator.build()
+        )
+    }
 
+    @Test
+    @Ignore
+    fun successCreateClauseObjectHasListAndSetFieldTest() {
+        val filter = FilterSetAndListFieldTypes(setOf(164, 178), listOf("v1", "v5"))
+        val creator = ClauseMaker(filter)
+        assertEquals(
+            "field1 in (164, 178) and field2 in ('v1', 'v5')",
+            creator.build()
+        )
+    }
+
+    data class FilterString(val field1: String?, val field2: String?, val field3: String? = null)
+    data class FilterVariousPrimitiveFieldTypes(val field1: Int?, val field2: Boolean?, val field3: Double?)
+    data class FilterListFieldTypes(val field1: List<String>?, val field2: List<Int>?)
+    data class FilterSetAndListFieldTypes(val field1: Set<Int>?, val field2: List<String>?)
 }

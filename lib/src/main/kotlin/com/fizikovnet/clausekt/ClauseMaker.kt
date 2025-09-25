@@ -2,12 +2,14 @@ package com.fizikovnet.clausekt
 
 import com.fizikovnet.clausekt.ComparisonType.*
 import com.fizikovnet.clausekt.LogicalType.*
+import java.lang.reflect.Field
 
 /**
  * ToDo
- * 1. Collections in field: List<String>
+ * 1. Collections in field: working with two types of compare type ops (IN, NOT IN)
  * 2. Support filter by jsonb data column
  * 3. Exception cases in build() fun: e.g. not correct compare or logical operators were passed
+ * 4. Convert CamelCasse field to underscored for sql entities compatible
  */
 class ClauseMaker() {
 
@@ -20,6 +22,9 @@ class ClauseMaker() {
         this.obj = obj
     }
 
+    /**
+     * ToDo make another fun which accept list of fields instead indexes
+     */
     fun exclude(vararg fieldIndexes: Int) = apply {
         excluded.addAll(fieldIndexes.toList())
     }
@@ -41,21 +46,47 @@ class ClauseMaker() {
             .forEachIndexed { idx, field ->
                 field.isAccessible = true
                 val fieldVal = field.get(obj)
-                val compOp = operators.getOrElse(idx) { operators[0] }
-                conditions.add(buildString {
+                val fieldClass = field.type.kotlin
+                if (fieldClass in listOf(List::class, Set::class)) {
                     if (idx > 0) {
                         val logicOp = logicalOps.getOrNull(idx - 1) ?: logicalOps.first()
-                        append(logicOp.op)
+                        conditions.add(logicOp.op)
                     }
-                    append("${field.name} ${compOp.op} ")
-                    if (basicTypes.contains(field.type.kotlin) || fieldVal == null) {
-                        append(field.get(obj))
-                    } else {
-                        append("'${field.get(obj)}'")
-                    }
-                })
+                    handleListField(field, conditions)
+                } else {
+                    val compOp = operators.getOrElse(idx) { operators[0] }
+                    conditions.add(buildString {
+                        if (idx > 0) {
+                            val logicOp = logicalOps.getOrNull(idx - 1) ?: logicalOps.first()
+                            append(logicOp.op)
+                        }
+                        append("${field.name} ${compOp.op} ")
+                        if (basicTypes.contains(field.type.kotlin) || fieldVal == null) {
+                            append(field.get(obj))
+                        } else {
+                            append("'${field.get(obj)}'")
+                        }
+                    })
+                }
             }
         return conditions.joinToString("")
+    }
+
+    private fun handleListField(field: Field, conditions: MutableList<String>) {
+        conditions.add(buildString {
+            val fieldVal = field.get(obj) as List<*>
+            val fieldValList = mutableListOf<String>()
+            fieldVal.forEach { it ->
+                if (it == null) {
+                    fieldValList.add("$it")
+                } else if (basicTypes.contains(it.javaClass.kotlin)) {
+                    fieldValList.add("$it")
+                } else {
+                    fieldValList.add("'$it'")
+                }
+            }
+            append("${field.name} in (${fieldValList.joinToString(", ")})")
+        })
     }
 
     @Deprecated("outdated method")
