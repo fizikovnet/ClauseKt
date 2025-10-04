@@ -13,7 +13,7 @@ class ClauseKtV2Test {
         val filter = FilterString("value_1", "value_2")
         val creator = ClauseMaker(filter)
         assertEquals(
-            "field1 = 'value_1' and field2 = 'value_2' and field3 = null",
+            "field1 = 'value_1' and field2 = 'value_2' and complex_field_name = null",
             creator.build()
         )
     }
@@ -62,7 +62,7 @@ class ClauseKtV2Test {
         )
     }
 
-    data class FilterString(val field1: String?, val field2: String?, val field3: String? = null)
+    data class FilterString(val field1: String?, val field2: String?, val complexFieldName: String? = null)
     data class FilterVariousPrimitiveFieldTypes(val field1: Int?, val field2: Boolean?, val field3: Double?)
     data class FilterListFieldTypes(val field1: List<String>?, val field2: List<Int>?)
     data class FilterSetAndListFieldTypes(val field1: Set<Int>?, val field2: List<String>?)

@@ -9,7 +9,6 @@ import java.lang.reflect.Field
  * 1. Collections in field: working with two types of compare type ops (IN, NOT IN)
  * 2. Support filter by jsonb data column
  * 3. Exception cases in build() fun: e.g. not correct compare or logical operators were passed
- * 4. Convert CamelCasse field to underscored for sql entities compatible
  */
 class ClauseMaker() {
 
@@ -17,9 +16,12 @@ class ClauseMaker() {
     private var excluded: MutableList<Int> = mutableListOf()
     private var operators: List<ComparisonType> = listOf(EQUAL)
     private var logicalOps: List<LogicalType> = listOf(AND)
+    private lateinit var conditions: MutableList<String>
 
     constructor(obj: Any) : this() {
         this.obj = obj
+        //ToDo clear conditions var after build or make ClauseMaker object not valid for reusable
+        this.conditions = mutableListOf<String>()
     }
 
     /**
@@ -38,55 +40,69 @@ class ClauseMaker() {
     }
 
     fun build(): String {
-        val conditions = mutableListOf<String>()
-        if (obj == null) {
-            throw ClauseMakerException("data class should be pass in constructor")
-        }
-        obj!!::class.java.declaredFields.filterIndexed { idx, _ -> !excluded.contains(idx) }
-            .forEachIndexed { idx, field ->
-                field.isAccessible = true
-                val fieldVal = field.get(obj)
-                val fieldClass = field.type.kotlin
-                if (fieldClass in listOf(List::class, Set::class)) {
-                    if (idx > 0) {
-                        val logicOp = logicalOps.getOrNull(idx - 1) ?: logicalOps.first()
-                        conditions.add(logicOp.op)
-                    }
-                    handleListField(field, conditions)
-                } else {
-                    val compOp = operators.getOrElse(idx) { operators[0] }
-                    conditions.add(buildString {
-                        if (idx > 0) {
-                            val logicOp = logicalOps.getOrNull(idx - 1) ?: logicalOps.first()
-                            append(logicOp.op)
-                        }
-                        append("${field.name} ${compOp.op} ")
-                        if (basicTypes.contains(field.type.kotlin) || fieldVal == null) {
-                            append(field.get(obj))
-                        } else {
-                            append("'${field.get(obj)}'")
-                        }
-                    })
-                }
-            }
+        validateInputData()
+        processFields()
         return conditions.joinToString("")
     }
 
-    private fun handleListField(field: Field, conditions: MutableList<String>) {
-        conditions.add(buildString {
-            val fieldVal = field.get(obj) as List<*>
-            val fieldValList = mutableListOf<String>()
-            fieldVal.forEach { it ->
-                if (it == null) {
-                    fieldValList.add("$it")
-                } else if (basicTypes.contains(it.javaClass.kotlin)) {
-                    fieldValList.add("$it")
-                } else {
-                    fieldValList.add("'$it'")
-                }
+    private fun validateInputData() {
+        if (obj == null) throw ClauseMakerException("data class should be pass in constructor")
+    }
+
+    private fun processFields() {
+        obj!!::class.java.declaredFields.filterIndexed { idx, _ -> !excluded.contains(idx) }
+            .forEachIndexed { idx, field -> handleFieldOrList(field, idx) }
+    }
+
+    private fun handleFieldOrList(field: Field, idx: Int) {
+        field.isAccessible = true
+        if (idx > 0) {
+            val logicOp = logicalOps.getOrNull(idx - 1) ?: logicalOps.first()
+            conditions.add(logicOp.op)
+        }
+        if (isListType(field)) {
+            handleListField(field)
+        } else {
+            handleNonListField(field, operators.getOrNull(idx) ?: operators.first())
+        }
+    }
+
+    private fun isListType(field: Field): Boolean = field.type.kotlin in listOf(List::class, Set::class)
+
+    private fun handleNonListField(field: Field, operator: ComparisonType) {
+        conditions += "${toUnderscoreCase(field.name)} ${operator.op} ${getValueAsSqlValueOrReference(field)}"
+    }
+
+    private fun handleListField(field: Field) {
+        val fieldVals = (field.get(obj) as List<*>).map {
+            if (it == null || basicTypes.contains(it.javaClass.kotlin)) {
+                it
+            } else {
+                "'$it'"
             }
-            append("${field.name} in (${fieldValList.joinToString(", ")})")
-        })
+        }.joinToString(", ")
+        conditions += "${toUnderscoreCase(field.name)} in ($fieldVals)"
+    }
+
+    private fun getValueAsSqlValueOrReference(field: Field): String {
+        val fieldVal = field.get(obj)
+        return when {
+            fieldVal == null -> "null"
+            basicTypes.contains(field.type.kotlin) -> fieldVal.toString()
+            else -> "'$fieldVal'"
+        }
+    }
+
+    fun toUnderscoreCase(str: String): String {
+        val sb = buildString {
+            str.forEach {
+                if (Character.isUpperCase(it)) {
+                    append("_")
+                }
+                append(it)
+            }
+        }
+        return sb.lowercase();
     }
 
     @Deprecated("outdated method")
