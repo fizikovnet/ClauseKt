@@ -93,16 +93,10 @@ class ClauseMaker() {
         }
     }
 
-    fun toUnderscoreCase(str: String): String {
-        val sb = buildString {
-            str.forEach {
-                if (Character.isUpperCase(it)) {
-                    append("_")
-                }
-                append(it)
-            }
-        }
-        return sb.lowercase();
+    private fun toUnderscoreCase(str: String): String {
+        return str.mapIndexed { index, c ->
+            if (index > 0 && c.isUpperCase()) "_$c" else c.toString()
+        }.joinToString("").lowercase()
     }
 
     @Deprecated("outdated method")

@@ -62,7 +62,28 @@ class ClauseKtV2Test {
         )
     }
 
+    @Test
+    fun successCreateClauseWithComplexFieldNameTest() {
+        val filter = FilterString("value_1", "value_2", "value_3")
+        val creator = ClauseMaker(filter)
+        assertEquals(
+            "field1 = 'value_1' and field2 = 'value_2' and complex_field_name = 'value_3'",
+            creator.build()
+        )
+    }
+
+    @Test
+    fun testCamelCaseFieldNamesConvertToUnderscore() {
+        val filter = FilterCamelCase("value1", "value2", "value3")
+        val creator = ClauseMaker(filter)
+        assertEquals(
+            "simple_field = 'value1' and field_name = 'value2' and complex_field_name = 'value3'",
+            creator.build()
+        )
+    }
+
     data class FilterString(val field1: String?, val field2: String?, val complexFieldName: String? = null)
+    data class FilterCamelCase(val simpleField: String?, val fieldName: String?, val complexFieldName: String?)
     data class FilterVariousPrimitiveFieldTypes(val field1: Int?, val field2: Boolean?, val field3: Double?)
     data class FilterListFieldTypes(val field1: List<String>?, val field2: List<Int>?)
     data class FilterSetAndListFieldTypes(val field1: Set<Int>?, val field2: List<String>?)
