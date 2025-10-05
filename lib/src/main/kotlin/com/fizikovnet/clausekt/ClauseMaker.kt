@@ -8,7 +8,6 @@ import java.lang.reflect.Field
  * ToDo
  * 1. Collections in field: working with two types of compare type ops (IN, NOT IN)
  * 2. Support filter by jsonb data column
- * 3. Exception cases in build() fun: e.g. not correct compare or logical operators were passed
  */
 class ClauseMaker() {
 
