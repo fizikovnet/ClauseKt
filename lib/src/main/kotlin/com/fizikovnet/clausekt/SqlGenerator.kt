@@ -23,7 +23,11 @@ class SqlGenerator {
         
         // Add subsequent conditions with logical operators
         for (i in 1 until conditions.size) {
-            val logicalOp = logicalOps.getOrNull(i - 1) ?: logicalOps.first()
+            val logicalOp = if (logicalOps.size == 1) {
+                logicalOps.first()  // Use the single provided logical operator for all connections
+            } else {
+                logicalOps.getOrNull(i - 1) ?: logicalOps.first()  // Use logical operator at index or fallback to first
+            }
             sqlParts.add(logicalOp.op)
             val condition = conditions[i]
             val conditionSql = buildConditionSql(condition, parameters)

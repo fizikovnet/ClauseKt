@@ -41,11 +41,27 @@ class ClauseMaker() {
         validateInputData()
         val conditions = mutableListOf<Condition>()
         processFieldsForConditions(conditions)
+        
+        validateOperationSizes(conditions.size)
+        
         return sqlGenerator.generateSql(conditions, logicalOps)
     }
 
     private fun validateInputData() {
         if (obj == null) throw ClauseMakerException("data class should be pass in constructor")
+    }
+    
+    private fun validateOperationSizes(fieldCount: Int) {
+        // Only validate operators size if multiple operators are provided
+        // If only one operator is provided, it will be applied to all fields
+        if (operators.size > 1 && operators.size != fieldCount && fieldCount > 0) {
+            throw ClauseMakerException("compareOperations size isn't equal of number of fields")
+        }
+        // Only validate logical operators size if multiple logical operators are provided
+        // If only one (default) logical operator is provided, it will be used for all connections
+        if (logicalOps.size > 1 && logicalOps.size != (fieldCount - 1) && fieldCount > 1) {
+            throw ClauseMakerException("logicalBindOperations should be 1 less then number of fields")
+        }
     }
 
     private fun processFieldsForConditions(conditions: MutableList<Condition>) {
@@ -59,7 +75,11 @@ class ClauseMaker() {
     private fun createCondition(field: Field, idx: Int): Condition {
         field.isAccessible = true
         val fieldValue = field.get(obj)
-        val operator = operators.getOrNull(idx) ?: operators.first()
+        val operator = if (operators.size == 1) {
+            operators.first()  // Use the single provided operator for all fields
+        } else {
+            operators.getOrNull(idx) ?: operators.first()  // Use operator at index or fallback to first
+        }
         
         return if (isListType(field)) {
             Condition(toUnderscoreCase(field.name), operator, fieldValue, isList = true)

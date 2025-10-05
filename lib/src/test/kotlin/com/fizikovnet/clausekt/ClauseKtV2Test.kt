@@ -5,6 +5,7 @@ import kotlin.test.assertEquals
 import com.fizikovnet.clausekt.ComparisonType.*
 import com.fizikovnet.clausekt.LogicalType.*
 import kotlin.test.Ignore
+import kotlin.test.assertFailsWith
 
 class ClauseKtV2Test {
 
@@ -120,6 +121,50 @@ class ClauseKtV2Test {
         
         assertEquals("field1 in (?, ?) and field2 not in (?, ?, ?)", result.sql)
         assertEquals(listOf("str_1", "str_2", 56, 87, 109), result.parameters)
+    }
+
+    @Test
+    fun throwExceptionWhenListCompareOpsNotEqualFieldSizeTest() {
+        val filter = FilterString("value_1", "value_2", "value_3")
+        val creator = ClauseMaker(filter)
+        val exception = assertFailsWith<ClauseMakerException> {
+            creator.operators(EQUAL, NOT_EQUAL) // 2 operators for 3 fields
+                .build()
+        }
+        assertEquals(exception.message, "compareOperations size isn't equal of number of fields")
+    }
+
+    @Test
+    fun throwExceptionWithIncorrectLogicalListSizeTest() {
+        val filter = FilterString("value_1", "value_2", "value_3")
+        val creator = ClauseMaker(filter)
+        val exception = assertFailsWith<ClauseMakerException> {
+            creator.operators(EQUAL, NOT_EQUAL, LIKE)
+                .binds(AND, OR, AND) // 3 logical operators for 3 fields (needs 2)
+                .build()
+        }
+        assertEquals(exception.message, "logicalBindOperations should be 1 less then number of fields")
+    }
+
+    @Test
+    fun successWithSingleOperatorForMultipleFields() {
+        val filter = FilterString("value_1", "value_2", "value_3")
+        val creator = ClauseMaker(filter)
+        val result = creator.build() // Uses default single EQUAL operator for all fields
+        
+        assertEquals("field1 = ? and field2 = ? and complex_field_name = ?", result.sql)
+        assertEquals(listOf("value_1", "value_2", "value_3"), result.parameters)
+    }
+
+    @Test
+    fun successWithDefaultLogicalOperatorForMultipleFields() {
+        val filter = FilterString("value_1", "value_2", "value_3")
+        val creator = ClauseMaker(filter)
+        val result = creator.operators(ComparisonType.EQUAL, ComparisonType.NOT_EQUAL, ComparisonType.LIKE) // 3 different operators
+            .build() // Uses default single AND operator to connect all fields
+        
+        assertEquals("field1 = ? and field2 <> ? and complex_field_name like ?", result.sql)
+        assertEquals(listOf("value_1", "value_2", "value_3"), result.parameters)
     }
 
     data class FilterString(val field1: String?, val field2: String?, val complexFieldName: String? = null)
