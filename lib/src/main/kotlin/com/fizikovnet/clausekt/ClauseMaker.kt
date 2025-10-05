@@ -16,14 +16,10 @@ class ClauseMaker() {
     private var excluded: MutableList<Int> = mutableListOf()
     private var operators: List<ComparisonType> = listOf(EQUAL)
     private var logicalOps: List<LogicalType> = listOf(AND)
-    private lateinit var conditions: MutableList<String>
-    private lateinit var parameters: MutableList<Any?>
+    private val sqlGenerator = SqlGenerator()
 
     constructor(obj: Any) : this() {
         this.obj = obj
-        //ToDo clear conditions var after build or make ClauseMaker object not valid for reusable
-        this.conditions = mutableListOf<String>()
-        this.parameters = mutableListOf<Any?>()
     }
 
     /**
@@ -41,59 +37,38 @@ class ClauseMaker() {
         logicalOps = listOf(*ops)
     }
 
-    fun build(): ClauseResult {
+    fun build(): SqlGenerator.ClauseResult {
         validateInputData()
-        parameters.clear() // Clear previous parameters
-        conditions.clear() // Clear previous conditions
-        processFields()
-        return ClauseResult(conditions.joinToString(""), parameters.toList())
+        val conditions = mutableListOf<Condition>()
+        processFieldsForConditions(conditions)
+        return sqlGenerator.generateSql(conditions, logicalOps)
     }
 
     private fun validateInputData() {
         if (obj == null) throw ClauseMakerException("data class should be pass in constructor")
     }
 
-    private fun processFields() {
+    private fun processFieldsForConditions(conditions: MutableList<Condition>) {
         obj!!::class.java.declaredFields.filterIndexed { idx, _ -> !excluded.contains(idx) }
-            .forEachIndexed { idx, field -> handleFieldOrList(field, idx) }
+            .forEachIndexed { idx, field ->
+                val condition = createCondition(field, idx)
+                conditions.add(condition)
+            }
     }
-
-    private fun handleFieldOrList(field: Field, idx: Int) {
+    
+    private fun createCondition(field: Field, idx: Int): Condition {
         field.isAccessible = true
-        if (idx > 0) {
-            val logicOp = logicalOps.getOrNull(idx - 1) ?: logicalOps.first()
-            conditions.add(logicOp.op)
-        }
-        if (isListType(field)) {
-            handleListField(field)
+        val fieldValue = field.get(obj)
+        val operator = operators.getOrNull(idx) ?: operators.first()
+        
+        return if (isListType(field)) {
+            Condition(toUnderscoreCase(field.name), operator, fieldValue, isList = true)
         } else {
-            handleNonListField(field, operators.getOrNull(idx) ?: operators.first())
+            Condition(toUnderscoreCase(field.name), operator, fieldValue, isList = false)
         }
     }
 
     private fun isListType(field: Field): Boolean = field.type.kotlin in listOf(List::class, Set::class)
-
-    private fun handleNonListField(field: Field, operator: ComparisonType) {
-        val fieldVal = field.get(obj)
-        conditions += "${toUnderscoreCase(field.name)} ${operator.op} ?"
-        parameters.add(fieldVal)
-    }
-
-    private fun handleListField(field: Field) {
-        val fieldVals = field.get(obj) as List<*>
-        val placeholders = fieldVals.map { "?" }.joinToString(", ")
-        conditions += "${toUnderscoreCase(field.name)} in ($placeholders)"
-        parameters.addAll(fieldVals)
-    }
-
-    private fun getValueAsSqlValueOrReference(field: Field): String {
-        val fieldVal = field.get(obj)
-        return when {
-            fieldVal == null -> "null"
-            basicTypes.contains(field.type.kotlin) -> fieldVal.toString()
-            else -> "'$fieldVal'"
-        }
-    }
 
     private fun toUnderscoreCase(str: String): String {
         return str.mapIndexed { index, c ->
@@ -152,8 +127,6 @@ class ClauseMaker() {
         return conditions.joinToString("")
     }
 
-
-    data class ClauseResult(val sql: String, val parameters: List<Any?>)
 
     companion object {
         private val basicTypes = listOf(
