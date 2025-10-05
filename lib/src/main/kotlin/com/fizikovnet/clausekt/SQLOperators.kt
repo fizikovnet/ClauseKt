@@ -8,7 +8,9 @@ enum class ComparisonType(val op: String) {
     EQUAL("="),
     NOT_EQUAL("<>"),
     LIKE("like"),
-    ILIKE("ilike")
+    ILIKE("ilike"),
+    IN("in"),
+    NOT_IN("not in")
 }
 
 enum class LogicalType(val op: String) {

@@ -43,7 +43,8 @@ class SqlGenerator {
                     parameters.add(it)
                     "?"
                 }.joinToString(", ")
-                "${condition.field} in ($placeholders)"
+                val operator = if (condition.operator == ComparisonType.NOT_IN) "not in" else "in"
+                "${condition.field} $operator ($placeholders)"
             } else {
                 // Handle null list case
                 parameters.add(condition.value)

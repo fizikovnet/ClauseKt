@@ -112,6 +112,16 @@ class ClauseKtV2Test {
         assert(!result.sql.contains("DROP TABLE"))
     }
 
+    @Test
+    fun testNotInOperatorWithListField() {
+        val filter = FilterListFieldTypes(listOf("str_1", "str_2"), listOf(56, 87, 109))
+        val creator = ClauseMaker(filter)
+        val result = creator.operators(IN, NOT_IN).build()
+        
+        assertEquals("field1 in (?, ?) and field2 not in (?, ?, ?)", result.sql)
+        assertEquals(listOf("str_1", "str_2", 56, 87, 109), result.parameters)
+    }
+
     data class FilterString(val field1: String?, val field2: String?, val complexFieldName: String? = null)
     data class FilterCamelCase(val simpleField: String?, val fieldName: String?, val complexFieldName: String?)
     data class FilterVariousPrimitiveFieldTypes(val field1: Int?, val field2: Boolean?, val field3: Double?)
