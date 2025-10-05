@@ -1,5 +1,7 @@
 # ClauseKt - SQL WHERE Clause Builder for Kotlin
 
+[![Gradle CI](https://github.com/fizikovnet/ClauseKt/actions/workflows/run-tests.yml/badge.svg?branch=main)](https://github.com/fizikovnet/ClauseKt/actions/workflows/run-tests.yml)
+
 ClauseKt is a Kotlin library that automatically generates parameterized SQL WHERE clauses from data objects. It provides a safe and convenient way to build dynamic SQL queries without the risk of SQL injection attacks.
 
 ## Features
