@@ -17,11 +17,13 @@ class ClauseMaker() {
     private var operators: List<ComparisonType> = listOf(EQUAL)
     private var logicalOps: List<LogicalType> = listOf(AND)
     private lateinit var conditions: MutableList<String>
+    private lateinit var parameters: MutableList<Any?>
 
     constructor(obj: Any) : this() {
         this.obj = obj
         //ToDo clear conditions var after build or make ClauseMaker object not valid for reusable
         this.conditions = mutableListOf<String>()
+        this.parameters = mutableListOf<Any?>()
     }
 
     /**
@@ -39,10 +41,12 @@ class ClauseMaker() {
         logicalOps = listOf(*ops)
     }
 
-    fun build(): String {
+    fun build(): ClauseResult {
         validateInputData()
+        parameters.clear() // Clear previous parameters
+        conditions.clear() // Clear previous conditions
         processFields()
-        return conditions.joinToString("")
+        return ClauseResult(conditions.joinToString(""), parameters.toList())
     }
 
     private fun validateInputData() {
@@ -70,18 +74,16 @@ class ClauseMaker() {
     private fun isListType(field: Field): Boolean = field.type.kotlin in listOf(List::class, Set::class)
 
     private fun handleNonListField(field: Field, operator: ComparisonType) {
-        conditions += "${toUnderscoreCase(field.name)} ${operator.op} ${getValueAsSqlValueOrReference(field)}"
+        val fieldVal = field.get(obj)
+        conditions += "${toUnderscoreCase(field.name)} ${operator.op} ?"
+        parameters.add(fieldVal)
     }
 
     private fun handleListField(field: Field) {
-        val fieldVals = (field.get(obj) as List<*>).map {
-            if (it == null || basicTypes.contains(it.javaClass.kotlin)) {
-                it
-            } else {
-                "'$it'"
-            }
-        }.joinToString(", ")
-        conditions += "${toUnderscoreCase(field.name)} in ($fieldVals)"
+        val fieldVals = field.get(obj) as List<*>
+        val placeholders = fieldVals.map { "?" }.joinToString(", ")
+        conditions += "${toUnderscoreCase(field.name)} in ($placeholders)"
+        parameters.addAll(fieldVals)
     }
 
     private fun getValueAsSqlValueOrReference(field: Field): String {
@@ -149,6 +151,9 @@ class ClauseMaker() {
         }
         return conditions.joinToString("")
     }
+
+
+    data class ClauseResult(val sql: String, val parameters: List<Any?>)
 
     companion object {
         private val basicTypes = listOf(
