@@ -80,6 +80,10 @@ class ClauseMaker() {
             operators.getOrNull(idx) ?: operators.first()  // Use operator at index or fallback to first
         }
         
+        if (!isListType(field) && (operator == IN || operator == NOT_IN)) {
+            throw ClauseMakerException("IN and NOT_IN operators can only be used with list field types, field '${field.name}' is a primitive type")
+        }
+        
         return if (isListType(field)) {
             Condition(toUnderscoreCase(field.name), operator, fieldValue, isList = true)
         } else {

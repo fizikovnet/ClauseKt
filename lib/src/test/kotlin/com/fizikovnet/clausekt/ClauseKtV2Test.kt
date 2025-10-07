@@ -167,6 +167,28 @@ class ClauseKtV2Test {
         assertEquals(listOf("value_1", "value_2", "value_3"), result.parameters)
     }
 
+    @Test
+    fun throwExceptionWhenPrimitiveFieldUsedWithInOperator() {
+        val filter = FilterString("value_1", "value_2", "value_3")
+        val creator = ClauseMaker(filter)
+        val exception = assertFailsWith<ClauseMakerException> {
+            creator.operators(IN, EQUAL, EQUAL)
+                .build()
+        }
+        assertEquals(exception.message, "IN and NOT_IN operators can only be used with list field types, field 'field1' is a primitive type")
+    }
+
+    @Test
+    fun throwExceptionWhenPrimitiveFieldUsedWithNotInOperator() {
+        val filter = FilterString("value_1", "value_2", "value_3")
+        val creator = ClauseMaker(filter)
+        val exception = assertFailsWith<ClauseMakerException> {
+            creator.operators(NOT_IN, EQUAL, EQUAL)
+                .build()
+        }
+        assertEquals(exception.message, "IN and NOT_IN operators can only be used with list field types, field 'field1' is a primitive type")
+    }
+
     data class FilterString(val field1: String?, val field2: String?, val complexFieldName: String? = null)
     data class FilterCamelCase(val simpleField: String?, val fieldName: String?, val complexFieldName: String?)
     data class FilterVariousPrimitiveFieldTypes(val field1: Int?, val field2: Boolean?, val field3: Double?)
