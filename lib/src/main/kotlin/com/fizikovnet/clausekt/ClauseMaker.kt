@@ -3,11 +3,11 @@ package com.fizikovnet.clausekt
 import com.fizikovnet.clausekt.ComparisonType.*
 import com.fizikovnet.clausekt.LogicalType.*
 import java.lang.reflect.Field
+import java.util.*
 
 /**
  * ToDo
- * 1. Collections in field: working with two types of compare type ops (IN, NOT IN)
- * 2. Support filter by jsonb data column
+ * 1. Support filter by jsonb data column
  */
 class ClauseMaker() {
 
@@ -40,7 +40,7 @@ class ClauseMaker() {
         validateInputData()
         val conditions = mutableListOf<Condition>()
         processFieldsForConditions(conditions)
-        
+
         validateOperationSizes(conditions.size)
         
         return sqlGenerator.generateSql(conditions, logicalOps)
@@ -79,19 +79,60 @@ class ClauseMaker() {
         } else {
             operators.getOrNull(idx) ?: operators.first()  // Use operator at index or fallback to first
         }
-        
-        if (!isListType(field) && (operator == IN || operator == NOT_IN)) {
-            throw ClauseMakerException("IN and NOT_IN operators can only be used with list field types, field '${field.name}' is a primitive type")
+        val isCollection = isValueCollectionType(fieldValue)
+
+        // Validate that IN/NOT_IN operators are not used with primitive (non-collection) fields
+        if (!isCollection && (operator == IN || operator == NOT_IN)) {
+            throw ClauseMakerException("IN and NOT_IN operators can only be used with collection field types, field '${field.name}' is a primitive type")
         }
-        
-        return if (isListType(field)) {
-            Condition(toUnderscoreCase(field.name), operator, fieldValue, isList = true)
+
+        return if (isCollection) {
+            val valueToUse = when (fieldValue) {
+                // For Maps, we use the values
+                is Map<*, *> -> fieldValue.values.toList()
+                is Set<*> -> fieldValue.toList()
+                else -> fieldValue
+            }
+
+            Condition(toUnderscoreCase(field.name), operator, valueToUse, isList = true)
         } else {
             Condition(toUnderscoreCase(field.name), operator, fieldValue, isList = false)
         }
     }
 
-    private fun isListType(field: Field): Boolean = field.type.kotlin in listOf(List::class, Set::class)
+    private fun isValueCollectionType(value: Any?): Boolean {
+        if (value == null) return false
+        
+        return when (value) {
+            is Collection<*>, is Map<*, *> -> true
+            else -> {
+                val javaClass = value.javaClass
+                // Check if it's an array
+                if (javaClass.isArray) return true
+                
+                // Check if it implements Collection or Map interfaces
+                val interfaces = javaClass.interfaces
+                for (interfaceType in interfaces) {
+                    if (interfaceType == java.util.Collection::class.java ||
+                        interfaceType == java.util.Map::class.java) {
+                        return true
+                    }
+                }
+                
+                // Check class hierarchy
+                var superClass = javaClass.superclass
+                while (superClass != null) {
+                    if (superClass == java.util.Collection::class.java ||
+                        superClass == java.util.Map::class.java) {
+                        return true
+                    }
+                    superClass = superClass.superclass
+                }
+                
+                false
+            }
+        }
+    }
 
     private fun toUnderscoreCase(str: String): String {
         return str.mapIndexed { index, c ->

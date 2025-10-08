@@ -8,9 +8,9 @@ ClauseKt is a Kotlin library that automatically generates parameterized SQL WHER
 
 - **Automatic SQL Generation**: Convert Kotlin data classes to SQL WHERE clauses automatically
 - **Parameterized Queries**: Generates safe parameterized queries to prevent SQL injection
-- **Flexible Operators**: Support for various comparison operators (`=`, `<>`, `<`, `>`, `<=`, `>=`, `like`, `ilike`, `in`, `not in`)
-- **Logical Operators**: Support for `AND`, `OR`, `NOT` logical operations between conditions
-- **List Support**: Automatically handles list fields with `IN`/`NOT IN` clauses
+- **Flexible Operators**: Support for various comparison operators (=``, `<>`, `<`, `>`, `<=`, `>=`, `like`, `ilike`, `in`, `not in`)
+- **Logical Operators**: Support for AND, OR, NOT logical operations between conditions
+- **Collection Support**: Automatically handles various collection types (List, Set, Map, and all their implementations) with IN/NOT IN clauses
 - **Field Filtering**: Exclude specific fields from the generated clause
 - **CamelCase Conversion**: Automatically converts camelCase field names to snake_case column names
 
@@ -54,7 +54,7 @@ val clauseMaker = ClauseMaker(filter)
 
 // Apply different comparison operators to each field
 val result = clauseMaker
-    .operators(LIKE, GREATER_OR_EQUAL, EQUAL)  // name LIKE, age >=, active =
+    .operators(LIKE, GREATER_OR_EQUAL, EQUAL) // name LIKE, age >=, active =
     .binds(AND, OR)                           // name AND age OR active
     .build()
 
@@ -62,21 +62,28 @@ println(result.sql)        // "name like ? and age >= ? or active = ?"
 println(result.parameters) // ["John", 25, true]
 ```
 
-### Working with Lists
+### Working with Collections
 
 ```kotlin
-data class ListFilter(
+data class CollectionFilter(
     val status: List<String>?,
-    val priority: List<Int>?
+    val priority: Set<Int>?,
+    val categories: Map<String, String>?,
+    val tags: MutableList<String>?
 )
 
-val filter = ListFilter(listOf("active", "pending"), listOf(1, 2, 3))
+val filter = CollectionFilter(
+    listOf("active", "pending"), 
+    setOf(1, 2), 
+    mapOf("type" to "premium", "region" to "us"),
+    mutableListOf("tag1", "tag2")
+)
 val clauseMaker = ClauseMaker(filter)
 
 val result = clauseMaker.build()
 
-println(result.sql)        // "status in (?, ?) and priority in (?, ?, ?)"
-println(result.parameters) // ["active", "pending", 1, 2, 3]
+println(result.sql)        // "status in (?, ?) and priority in (?, ?) and categories in (?, ?) and tags in (?, ?)"
+println(result.parameters) // ["active", "pending", 1, 2, "premium", "us", "tag1", "tag2"] - Map values are used
 ```
 
 ### NOT IN Operator
@@ -174,3 +181,4 @@ The library throws `ClauseMakerException` when:
 - The number of comparison operators doesn't match the number of fields (when multiple operators are provided)
 - The number of logical operators isn't one less than the number of fields (when multiple logical operators are provided)
 - No data object is provided to the constructor
+- IN or NOT_IN operators are used with primitive (non-collection) field types

@@ -6,6 +6,7 @@ import com.fizikovnet.clausekt.ComparisonType.*
 import com.fizikovnet.clausekt.LogicalType.*
 import kotlin.test.Ignore
 import kotlin.test.assertFailsWith
+import kotlin.test.assertTrue
 
 class ClauseKtV2Test {
 
@@ -175,7 +176,7 @@ class ClauseKtV2Test {
             creator.operators(IN, EQUAL, EQUAL)
                 .build()
         }
-        assertEquals(exception.message, "IN and NOT_IN operators can only be used with list field types, field 'field1' is a primitive type")
+        assertEquals(exception.message, "IN and NOT_IN operators can only be used with collection field types, field 'field1' is a primitive type")
     }
 
     @Test
@@ -186,7 +187,41 @@ class ClauseKtV2Test {
             creator.operators(NOT_IN, EQUAL, EQUAL)
                 .build()
         }
-        assertEquals(exception.message, "IN and NOT_IN operators can only be used with list field types, field 'field1' is a primitive type")
+        assertEquals(exception.message, "IN and NOT_IN operators can only be used with collection field types, field 'field1' is a primitive type")
+    }
+
+    @Test
+    fun successCreateClauseWithCollectionTypes() {
+        val filter = FilterCollectionTypes(
+            listOf("str_1", "str_2"),           // List
+            setOf("val1", "val2", "val3"),      // Set
+            mutableListOf("a", "b"),            // MutableList
+            linkedSetOf("x", "y", "z")          // LinkedSet
+        )
+        val creator = ClauseMaker(filter)
+        val result = creator.build()
+        
+        assertEquals("list_field in (?, ?) and set_field in (?, ?, ?) and mutable_list_field in (?, ?) and linked_set_field in (?, ?, ?)", result.sql)
+        assertEquals(listOf("str_1", "str_2", "val1", "val2", "val3", "a", "b", "x", "y", "z"), result.parameters)
+    }
+
+    @Test
+    fun successCreateClauseWithMapValues() {
+        val filter = FilterMapTypes(
+            mapOf("key1" to "value1", "key2" to "value2"),
+            mutableMapOf("a" to 1, "b" to 2, "c" to 3)
+        )
+        val creator = ClauseMaker(filter)
+        val result = creator.build()
+        
+        assertEquals("map_field in (?, ?) and mutable_map_field in (?, ?, ?)", result.sql)
+        // Note: Map order is not guaranteed, so we check if all values are present
+        assertEquals(5, result.parameters.size)
+        assertTrue(result.parameters.contains("value1"))
+        assertTrue(result.parameters.contains("value2"))
+        assertTrue(result.parameters.contains(1))
+        assertTrue(result.parameters.contains(2))
+        assertTrue(result.parameters.contains(3))
     }
 
     data class FilterString(val field1: String?, val field2: String?, val complexFieldName: String? = null)
@@ -194,4 +229,14 @@ class ClauseKtV2Test {
     data class FilterVariousPrimitiveFieldTypes(val field1: Int?, val field2: Boolean?, val field3: Double?)
     data class FilterListFieldTypes(val field1: List<String>?, val field2: List<Int>?)
     data class FilterSetAndListFieldTypes(val field1: Set<Int>?, val field2: List<String>?)
+    data class FilterCollectionTypes(
+        val listField: List<String>?,
+        val setField: Set<String>?,
+        val mutableListField: MutableList<String>?,
+        val linkedSetField: LinkedHashSet<String>?
+    )
+    data class FilterMapTypes(
+        val mapField: Map<String, String>?,
+        val mutableMapField: MutableMap<String, Int>?
+    )
 }
